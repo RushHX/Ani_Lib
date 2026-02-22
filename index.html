@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Anime Library</title>
+<link rel="icon" href="image.jpg">
+<style>
+  body {
+    margin:0;
+    font-family: Arial, Helvetica, sans-serif;
+    color:white;
+    overflow-x:hidden;
+    background-size:cover;
+    background-position:center;
+    background-attachment:fixed;
+    transition: background-image 0.6s ease-in-out;
+    scrollbar-width: none;
+  }
+ html, body {
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+  body::before {
+    content:"";
+    position:fixed;
+    top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.75);
+    z-index:-1;
+  }
+
+ #bg-video-container {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    overflow: hidden;
+    z-index: -1;
+    pointer-events: none;
+  }
+  #bg-video {
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+
+  .custom-scroll {
+    position: fixed;
+    top: 0; right: 30px;
+    width: 4px; height: 100%;
+    background: rgba(255,255,255,0);
+    border-radius: 6px;
+    z-index: 9999;
+    transition: opacity 0.3s ease;
+  }
+  .custom-thumb {
+    width: 30%;
+    background: rgb(34, 211, 255);
+    border-radius: 10px;
+    border: 2px solid #00ffff;
+    position: absolute;
+    top: 0; left: 0;
+    box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
+    transition: top 0.15s ease, height 0.15s ease, background 0.2s, box-shadow 0.2s;
+  }
+  .scroll-image {
+    position: absolute;
+    left: -70px;
+    width: 100px; height: 120px;
+    top: 0;
+    pointer-events: none;
+    transition: top 0.2s ease;
+  }
+  .custom-scroll:hover .custom-thumb {
+    background: rgba(7, 85, 255, 0.938);
+  }
+
+  .container {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding-top:calc(50vh - 110px);
+    padding-bottom:calc(50vh - 110px);
+    transition: opacity 0.3s ease;
+  }
+
+  .anime-item {
+    width:75%;
+    height:350px;
+    margin:10px 0;
+    position: relative;
+    overflow: visible;
+    transform: skewX(-15deg) scale(0.85);
+    transition: all 1s ease, opacity 0.3s ease;
+    opacity:0.5;
+  }
+  .anime-item.expanded { height:900px; }
+  .anime-item.dimmed { opacity:0; transition: opacity 0.5s ease; }
+  .frame-color { position:absolute; inset:0; z-index:2; pointer-events:none; background:rgba(0,0,0,0.5); }
+  .anime-bg, .anime-bg2 { position:absolute; left:0; top:0; width:35%; height:100%; overflow:hidden; z-index:2; }
+  .anime-bg2 img, .anime-bg img { width:100%; height:100%; object-fit:cover; }
+  .anime-bg2 img { object-position: center 10%; }
+  .anime-content { position:relative; z-index:3; height:100%; display:flex; align-items:center; padding-left:40%; transform:skewX(15deg); }
+  .divider { width:4px; height:75%; margin-right:25px; transform:skewX(-15deg); opacity:0.7; }
+  .anime-text h2 { margin:0; font-size:28px; }
+  .anime-text p { margin-top:10px; font-size:16px; }
+
+  .anime-buttons { position: absolute; bottom: 20px; left: 40%; display: flex; gap: 40px; opacity: 0; transition: opacity 0.5s ease; z-index: 10; }
+  .anime-item.expanded .anime-buttons { opacity: 1; }
+  .anime-buttons a img { width: 50px; height: 50px; object-fit: contain; transition: transform 0.2s ease, filter 0.2s ease; cursor: pointer; filter: drop-shadow(0 0 5px #ffffff); }
+  .anime-buttons a img:hover { transform: scale(1.2); filter: drop-shadow(0 0 10px #ffffff) drop-shadow(0 0 20px #fff); }
+
+  .cinema-toggle { position: fixed; bottom: 30px; right: 50px; z-index: 100000; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(6px); color: white; font-size: 18px; font-weight: bold; padding: 14px 28px; border-radius: 60px; cursor: pointer; box-shadow: 0 0 20px cyan, 0 0 40px rgba(0,255,255,0.4); transition: 0.2s; border: none; outline: 2px solid cyan; }
+  .cinema-toggle:hover { background: cyan; color: black; box-shadow: 0 0 30px white; outline: 2px solid white; }
+
+  .hide-all-items .container { opacity: 0; pointer-events: none; }
+  .hide-all-items .custom-scroll { opacity: 0; pointer-events: none; }
+  .plot { position: absolute; bottom: 200px; left: 45%; display: flex; gap: 200px; opacity: 0; transition: opacity 0.5s ease; z-index: 10; }
+  .anime-item.expanded .plot { opacity: 1; }
+
+  #videoSelector { user-select: none; position: fixed; bottom: 30px; right: 1650px; z-index: 100000; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(6px); color: white; font-size: 18px; font-weight: bold; padding: 14px 28px; border-radius: 60px; cursor: pointer; box-shadow: 0 0 20px cyan, 0 0 40px rgba(0,255,255,0.4); transition: 0.2s; border: none; outline: 2px solid cyan; }
+ #videoOptions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: fixed;
+  bottom: 85px;
+  right: 1650px;
+  background: rgba(0,0,0,0.9);
+  border-radius: 20px;
+  box-shadow: 0 0 20px cyan;
+  overflow-y: auto;         /* Hacer scroll vertical */
+  display: none;
+  z-index: 100000;
+  min-width: 200px;
+  max-height: 60vh;         /* Limita altura al 60% de la ventana */
+}
+#videoOptions li {
+  padding: 12px 20px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(0,255,255,0.4);
+  transition: 0.2s;
+}
+#videoOptions li:hover {
+  background: cyan;
+  color: black;
+}
+
+.anime-bg img,
+.anime-bg2 img {
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  transition: opacity 0.4s ease;
+}
+#interactive-video-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1; /* detrás de los frames y botones */
+  display: none;
+  background: black;
+}
+
+#interactive-video {
+  width: 100%;
+  height: 100%;
+  border: none;
+  pointer-events: auto; /* permite usar los controles */
+}
+</style>
+</head>
+<body>
+
+<div id="videoSelector">🎥 Videos ▼</div>
+<ul id="videoOptions"></ul>
+
+<!-- Fondo normal -->
+<div id="bg-video-container">
+  <iframe id="bg-video" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+</div>
+
+<!-- Contenedor para videos interactivos -->
+<div id="interactive-video-container">
+  <iframe id="interactive-video" ...></iframe>
+</div>
+
+<div class="custom-scroll">
+  <div class="custom-thumb"></div>
+  <img src="https://i.postimg.cc/L4GWpzCd/275-2758978-aqua-chibi-konosuba-aqua-chibi-png-(1).png" class="scroll-image" />
+</div>
+
+<button class="cinema-toggle" id="cinemaModeBtn">🎬</button>
+
+<div class="container">
+  <div class="anime-item"
+       data-bg="https://freakelitex.com/wp-content/uploads/2018/06/Darling-in-the-FRANXX.jpg"
+       data-framecolor="#8b0000"
+       data-textcolor="#ffffff"
+       data-scrollcolor="#ff0000"
+        data-expandedimg="https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/10d4a0bf-2d08-45e3-b2e2-22df6e1abe00/width=1200/10d4a0bf-2d08-45e3-b2e2-22df6e1abe00.jpeg"
+       data-scrollimg="https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/5bfdd518-b0d9-4a5e-a2aa-9db8f41cf165/dcrgdwa-3b3e6776-bc7e-463d-aa70-e841b9150eb1.png/v1/fill/w_1024,h_1024,strp/zero_two_chibi_darling_in_the_franxx_render_vector_by_eme_21_dcrgdwa-fullview.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9MTAyNCIsInBhdGgiOiJcL2ZcLzViZmRkNTE4LWIwZDktNGE1ZS1hMmFhLTlkYjhmNDFjZjE2NVwvZGNyZ2R3YS0zYjNlNjc3Ni1iYzdlLTQ2M2QtYWE3MC1lODQxYjkxNTBlYjEucG5nIiwid2lkdGgiOiI8PTEwMjQifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.OBQhXSGIWM8YWRaBNERf_7SfYtjAGcWubTeydp8nAMY"
+       data-videos='[
+        {"name":"Trailer","id":"4zJZOSwmvUk"},
+        {"name":"Opening 1","id":"A4kLcDWBYcQ"},
+        {"name":"Ending 1","id":"IAZMcHA7rYs"},
+        {"name":"Episode 1","id":"UA-WsGa8TmQ", "controllable":"yes"},
+        {"name":"Opening 2","id":"aBjxQ_F93CY"},
+        {"name":"Ending 2","id":"pedV5JoMdtU"},
+        {"name":"Ending 3","id":"zMVxXzB38Cs"},
+        {"name":"Ending 4","id":"tigMXME-1Z4"},
+        {"name":"Ending 5","id":"N7VjqtrRnbU"}
+       ]'>
+    <div class="frame-color"></div>
+    <div class="anime-bg">
+      <img src="https://images3.alphacoders.com/958/thumb-1920-958532.jpg">
+    </div>
+    <div class="anime-content">
+      <div class="divider"></div>
+      <div class="anime-text">
+        <h2>Darling in the Franxx</h2>
+        <p>1 season - 24 Episodes</p>
+        <p>Gender: Romance, Drama, Sci-Fi</p>
+        <p>Rate: ⭐⭐⭐⭐⭐</p>
+      </div>
+    </div>
+    <div class="anime-buttons">
+      <a href="https://www.crunchyroll.com/es-es/series/GY8VEQ95Y/darling-in-the-franxx" target="_blank">
+        <img src="https://i0.wp.com/miro.medium.com/max/3150/1*Nr105zI3A8-P09Lxb2Urog.png" alt="Crunchyroll">
+      </a>
+      <a href="https://www.youtube.com/" target="_blank">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg" alt="YouTube">
+      </a>
+      <a href="https://darling-in-the-franxx.fandom.com/wiki/DARLING_in_the_FRANXX_Wiki" target="_blank">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/6/63/Wikipedia-logo.png" alt="Wikipedia">
+      </a>
+    </div>
+    <div class="plot">
+      <p>In a devastated future, humanity fights for survival with giant mechs. Hiro, a young pilot, meets the mysterious and fierce Zero Two. Their forbidden love sparks hope—and chaos—on the battlefield.</p>
+    </div>
+  </div>
+
+  <div class="anime-item"
+      data-bg="https://freakelitex.com/wp-content/uploads/2018/06/Darling-in-the-FRANXX.jpg"
+       data-framecolor="#881ba3"
+       data-textcolor="#ffffff"
+       data-scrollcolor="#ffff00"
+       data-expandedimg="https://data.onnada.com/anime/201503/2009184215_aeeda6ce_ouka_1.jpg"
+       data-scrollimg="https://i.postimg.cc/sg5GPVYP/Ais.png"
+       data-videos='[
+        {"name":"Trailer","id":"3iq-zyWHkgU"},
+         {"name":"Trailer Season 1","id":"-WVO0GIfq-M"},
+           {"name":"Trailer Season 2","id":"6EIm7UaN5ws"},
+              {"name":"Trailer Season 3","id":"BJp9Y5_0Jpk"},
+                {"name":"Trailer Season 4","id":"TTTJwcQyQMo"},
+                  {"name":"Trailer Season 5","id":"kL-Zr-oOY2w"},
+                    {"name":"Trailer Season 6","id":"im1_YEf9fGU"},
+        {"name":"Opening 1","id":"Y6jvUJBbPqQ"},
+         {"name":"Opening 2","id":"ZhrCLn_P6cY"},
+          {"name":"Opening 3","id":"wPKQ7aPWKJQ"},
+           {"name":"Opening 4","id":"gu40Hdg8y28"},
+           {"name":"Opening 4.2","id":"eyOzF1HMLew"},
+            {"name":"Opening 5","id":"fhW9sMKdLxc"},
+          {"name":"Ending 1","id":"AEU2nskSucQ"},
+           {"name":"Ending 2","id":"qBrML3-PF04"},
+             {"name":"Ending 3","id":"bcNW8dbRfbA"},
+              {"name":"Ending 4","id":"N0Y-fL1Wpzc"},
+               {"name":"Ending 4.2","id":"pQCU-EMT2sg"},
+                {"name":"Ending 5","id":"fzfqkJd9hU0"},
+                 {"name":"Season 1 Ep1 1/2","id":"7CmWcNV9iis", "controllable":"yes"},
+                  {"name":"Season 1 Ep1 2/2","id":"VEuNCy4tKcg", "controllable":"yes"},
+                   {"name":"Season 2 Ep1","id":"uYUmO3Z6X7w", "controllable":"yes"},
+                   {"name":"Season 3 Ep1","id":"59Zdx91LlCM", "controllable":"yes"},
+                    {"name":"🔥Full season 4","id":"wjU0j71PDsw", "controllable":"yes"},
+                    {"name":"Season 5 Ep1","id":"sOZhPvrsO24", "controllable":"yes"},
+                     {"name":"Season 5 Ep2","id":"xTen2mazRNk", "controllable":"yes"},
+                      {"name":"Season 5 Ep3","id":"Mt5P99QywXI", "controllable":"yes"},
+                       {"name":"Season 5 Ep4","id":"KixKhbOGUaU", "controllable":"yes"},
+                        {"name":"Season 5 Ep5","id":"Dyu4VrMXxPQ", "controllable":"yes"},
+                         {"name":"Season 5 Ep6","id":"jbHpRtkcQIY", "controllable":"yes"},
+                          {"name":"Season 5 Ep7","id":"tU_kHIYv_qc", "controllable":"yes"},
+                           {"name":"Season 5 Ep8","id":"VCqzIuY8Jno", "controllable":"yes"},
+                            {"name":"Season 5 Ep9","id":"MVJ_VKubnE4", "controllable":"yes"},
+                             {"name":"Season 5 Ep10","id":"ufCb0lqfNNA", "controllable":"yes"},
+                              {"name":"Season 5 Ep11","id":"AOp6sds5Iyo", "controllable":"yes"},
+                               {"name":"Season 5 Ep12","id":"V3CHjcA4CPk", "controllable":"yes"},
+                                {"name":"Season 5 Ep13","id":"hKyqu2vlYeA", "controllable":"yes"},
+                                 {"name":"Season 5 Ep14","id":"3nADY9Q-zC8", "controllable":"yes"},
+                                  {"name":"Season 5 Ep15","id":"oQk5SnYXhrY", "controllable":"yes"}
+       ]'>
+    <div class="frame-color"></div>
+    <div class="anime-bg">
+      <img src="https://www.dpzone.in/wp-content/uploads/3/Danmachi-PFP-16.webp">
+    </div>
+    <div class="anime-content">
+      <div class="divider"></div>
+      <div class="anime-text">
+        <h2>DanMachi</h2>
+        <p>5 seasons - 59 Episodes</p>
+         <p>1 Film</p>
+          <p>4 Ovas</p>
+        <p>Gender: Fantasy, Adventure, Action, Comedy, Romance, Ecchi</p>
+        <p>Rate: ⭐⭐⭐⭐</p>
+      </div>
+    </div>
+    <div class="anime-buttons">
+      <a href="https://www.youtube.com/" target="_blank">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg" alt="YouTube">
+      </a>
+      <a href="https://danmachi.fandom.com/wiki/DanMachi_Wiki" target="_blank">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/6/63/Wikipedia-logo.png" alt="Wikipedia">
+      </a>
+    </div>
+    <div class="plot">
+      <p>In the bustling city of Orario, adventurer Bell Cranel dreams of becoming a hero. Facing deadly dungeons and powerful monsters, he grows stronger with every challenge. Along the way, friendship, romance, and unexpected comedy make every quest unforgettable.</p>
+    </div>
+  </div>
+
+  <div class="anime-item"
+       data-bg="https://picsum.photos/1920/1080?random=30"
+       data-framecolor="#1e3a8a"
+       data-textcolor="#ffcc00">
+    <div class="frame-color"></div>
+    <div class="anime-bg">
+      <img src="https://picsum.photos/600/800?random=3">
+    </div>
+    <div class="anime-content">
+      <div class="divider"></div>
+      <div class="anime-text">
+        <h2>Naruto</h2>
+        <p>Un ninja que sueña con convertirse en Hokage.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const items = document.querySelectorAll('.anime-item');
+  const bgVideoIframe = document.getElementById('bg-video');
+  const thumb = document.querySelector('.custom-thumb');
+  const scrollImage = document.querySelector('.scroll-image');
+  const bodyEl = document.body;
+  const cinemaBtn = document.getElementById('cinemaModeBtn');
+
+  let currentBg = "";
+  let expandedItem = null;
+  let cinemaActive = false;
+
+  const videoSelector = document.getElementById('videoSelector');
+  const videoOptions = document.getElementById('videoOptions');
+  let currentVideoItem = items[0]; 
+  let currentVideoId = null;
+
+  videoSelector.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if(videoOptions.style.display === 'none') {
+      updateVideoList(currentVideoItem);
+      videoOptions.style.display = 'block';
+    } else {
+      videoOptions.style.display = 'none';
+    }
+  });
+
+  function updateVideoList(item) {
+    if(!item) return;
+    const videosData = item.getAttribute('data-videos');
+    if(!videosData) return;
+
+    let videos = [];
+    try { videos = JSON.parse(videosData); } catch(e){ console.error(e); }
+
+    videoOptions.innerHTML = '';
+    videos.forEach(v => {
+      const li = document.createElement('li');
+      li.textContent = v.name;
+      li.style.padding = '10px';
+      li.style.cursor = 'pointer';
+      li.style.borderBottom = '1px solid cyan';
+  li.addEventListener('click', () => {
+  const controllable = v.controllable && v.controllable.toLowerCase() === "yes";
+  const controlsValue = controllable ? 1 : 0;
+
+  if (controllable) {
+    // Limpiar video de fondo
+    document.getElementById('bg-video').src = '';
+
+    // Mostrar iframe interactivo
+    const interVid = document.getElementById('interactive-video');
+    interVid.src = `https://www.youtube.com/embed/${v.id}?autoplay=1&controls=${controlsValue}&mute=0&loop=1&playlist=${v.id}`;
+    document.getElementById('interactive-video-container').style.display = 'block';
+  } else {
+    // Ocultar iframe interactivo si estaba abierto
+    document.getElementById('interactive-video-container').style.display = 'none';
+    document.getElementById('interactive-video').src = '';
+
+    // Video de fondo normal
+    const bgVid = document.getElementById('bg-video');
+    bgVid.src = `https://www.youtube.com/embed/${v.id}?autoplay=1&controls=0&mute=0&loop=1&playlist=${v.id}`;
+  }
+});
+      videoOptions.appendChild(li);
+    });
+  }
+
+items.forEach(item => {
+
+  const imgInit = item.querySelector(".anime-bg img, .anime-bg2 img");
+  if(imgInit){
+    item.dataset.originalimg = imgInit.src;
+  }
+
+  item.addEventListener('click', () => {
+
+    if(expandedItem && expandedItem !== item){
+      expandedItem.classList.remove('expanded');
+
+      const oldImg = expandedItem.querySelector(".anime-bg img, .anime-bg2 img");
+      const oldOriginal = expandedItem.dataset.originalimg;
+
+      if(oldImg && oldOriginal){
+        oldImg.style.opacity = 0;
+        setTimeout(() => {
+          oldImg.src = oldOriginal;
+          oldImg.style.opacity = 1;
+        }, 300);
+      }
+
+      expandedItem = null;
+    }
+
+    item.classList.toggle('expanded');
+    expandedItem = item.classList.contains('expanded') ? item : null;
+
+    const imgElement = item.querySelector(".anime-bg img, .anime-bg2 img");
+
+    if(item.classList.contains('expanded')){
+
+      const expandedImg = item.getAttribute("data-expandedimg");
+
+      if(expandedImg && imgElement){
+        imgElement.style.opacity = 0;
+
+        setTimeout(() => {
+          imgElement.src = expandedImg;
+          imgElement.style.opacity = 1;
+        }, 300);
+      }
+
+      const newScrollImg = item.getAttribute("data-scrollimg");
+      if(newScrollImg){
+        scrollImage.style.opacity = 0;
+        setTimeout(() => {
+          scrollImage.src = newScrollImg;
+          scrollImage.style.opacity = 1;
+        }, 200);
+      }
+
+      const scrollColor = item.getAttribute("data-scrollcolor");
+      if(scrollColor){
+        thumb.style.background = scrollColor;
+        thumb.style.border = `2px solid ${scrollColor}`;
+        thumb.style.boxShadow = `0 0 10px ${scrollColor}, 0 0 20px ${scrollColor}`;
+
+        const scrollContainer = document.querySelector('.custom-scroll');
+
+        scrollContainer.onmouseenter = () => {
+          thumb.style.filter = "brightness(0.8)";
+        };
+
+        scrollContainer.onmouseleave = () => {
+          thumb.style.filter = "brightness(1)";
+        };
+      }
+
+      currentVideoItem = item;
+      updateVideoList(item);
+
+      const firstVideo = JSON.parse(item.getAttribute('data-videos') || '[]')[0];
+      if(firstVideo){
+        bgVideoIframe.src =
+          `https://www.youtube.com/embed/${firstVideo.id}?autoplay=1&controls=0&mute=0&loop=1&playlist=${firstVideo.id}&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&disablekb=1`;
+
+        currentVideoId = firstVideo.id;
+        videoSelector.textContent = `🎥 ${firstVideo.name} ▼`;
+      }
+
+    } else {
+
+      const original = item.dataset.originalimg;
+
+      if(imgElement && original){
+        imgElement.style.opacity = 0;
+
+        setTimeout(() => {
+          imgElement.src = original;
+          imgElement.style.opacity = 1;
+        }, 300);
+      }
+    }
+  });
+});
+
+  updateVideoList(currentVideoItem);
+  const firstVideo = JSON.parse(currentVideoItem.getAttribute('data-videos') || '[]')[0];
+  if(firstVideo){
+    bgVideoIframe.src = `https://www.youtube.com/embed/${firstVideo.id}?autoplay=1&controls=0&mute=0&loop=1&playlist=${firstVideo.id}&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&disablekb=1`;
+    currentVideoId = firstVideo.id;
+    videoSelector.textContent = `🎥 ${firstVideo.name} ▼`;
+  }
+
+  document.addEventListener('click', (e) => {
+    if(!videoSelector.contains(e.target) && !videoOptions.contains(e.target)){
+      videoOptions.style.display = 'none';
+    }
+  });
+
+  function updateUI() {
+    const center = window.innerHeight / 2;
+    let closestItem = null;
+    let closestDistance = Infinity;
+
+    items.forEach(item => {
+      const rect = item.getBoundingClientRect();
+      const itemCenter = rect.top + rect.height / 2;
+      const distance = Math.abs(center - itemCenter);
+
+      if(distance < closestDistance){
+        closestDistance = distance;
+        closestItem = item;
+      }
+
+      if(!item.classList.contains('expanded')){
+        item.style.transform = "skewX(-15deg) scale(0.85)";
+        item.style.opacity = 0.5;
+      }
+      item.style.pointerEvents = 'none';
+    });
+
+    if(closestItem){
+      if(!closestItem.classList.contains('expanded')){
+        closestItem.style.transform = "skewX(-15deg) scale(1)";
+        closestItem.style.opacity = 1;
+      }
+      closestItem.style.pointerEvents = 'auto';
+
+      const newBg = closestItem.getAttribute("data-bg");
+      if(newBg !== currentBg){
+        document.body.style.backgroundImage = `url(${newBg})`;
+        currentBg = newBg;
+      }
+
+      const frameColor = closestItem.getAttribute("data-framecolor");
+      const fcDiv = closestItem.querySelector(".frame-color");
+      if(fcDiv) fcDiv.style.background = frameColor;
+
+      const textColor = closestItem.getAttribute("data-textcolor");
+      closestItem.querySelectorAll("h2, p").forEach(el => el.style.color = textColor);
+      const divider = closestItem.querySelector(".divider");
+      if(divider) divider.style.background = textColor;
+    }
+  }
+
+  function updateCustomScroll() {
+    const scrollTop = window.scrollY;
+    const track = document.querySelector(".custom-scroll");
+    if (!track) return;
+
+    const trackHeight = track.offsetHeight;
+    const thumbHeight = Math.max(trackHeight * (window.innerHeight / document.documentElement.scrollHeight), 30);
+    const scrollPercent = scrollTop / (document.documentElement.scrollHeight - window.innerHeight);
+    const topPos = scrollPercent * (trackHeight - thumbHeight);
+
+    thumb.style.height = thumbHeight + "px";
+    thumb.style.top = topPos + "px";
+    scrollImage.style.top = topPos + "px";
+  }
+
+  window.addEventListener('scroll', () => { updateUI(); updateCustomScroll(); });
+  window.addEventListener('load', () => { updateUI(); updateCustomScroll(); });
+  window.addEventListener('resize', updateCustomScroll);
+
+  cinemaBtn.addEventListener('click', function() {
+    cinemaActive = !cinemaActive;
+    if(cinemaActive){
+      bodyEl.classList.add('hide-all-items');
+      cinemaBtn.textContent = '🔆';
+    } else {
+      bodyEl.classList.remove('hide-all-items');
+      cinemaBtn.textContent = '🎬';
+      updateUI();
+    }
+  });
+
+})();
+</script>
+
+</body>
+</html>
